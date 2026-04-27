@@ -55,7 +55,19 @@ Expected columns:
 | `drug_id` | Drug identifier matching `ID1` / `ID2` |
 | `target_id` | Protein, gene, or target identifier |
 
-The repository also contains `data/raw/TWOSIDES.csv` and `data/raw/TWOSIDES.csv.gz`. The included `data/raw/README.md` describes the original TwoSIDES column definitions.
+The full `data/` folder is not stored directly in GitHub because it is too large for normal repository storage. Download the compressed data archive from Google Drive:
+
+[Download data archive](https://drive.google.com/file/d/1dg7CLVzi9XxiUQ2TeM7muRdfv6xxSGMb/view?usp=sharing)
+
+After downloading, unzip the archive into the project root so the folder layout matches:
+
+```text
+data/
+├── raw/
+└── processed/
+```
+
+The included `data/raw/README.md` describes the original TwoSIDES column definitions.
 
 ## Setup
 
