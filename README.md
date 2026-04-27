@@ -1,26 +1,38 @@
-# Drug-Drug Interaction Prediction
+# DDI Side-Effect Prediction
 
-This project builds drug-drug interaction (DDI) prediction models from TwoSIDES-style side-effect data. It supports both simple binary experiments for a single side effect and multi-label experiments that predict many side effects for each drug pair.
+This repository contains the code for the final-year project:
 
-The current pipeline uses drug-pair SMILES data, Morgan fingerprints, molecular graphs, and optional drug-target features. Models include logistic regression baselines and graph neural networks built with PyTorch Geometric.
+**Graph Neural Network Fusion for Multi-label Drug-Drug Interaction Side-Effect Prediction**
 
-## Project Structure
+The project studies multi-label prediction of adverse side effects arising from drug-drug interactions (DDIs) using molecularly derived drug representations. It includes:
+
+- a Morgan fingerprint one-vs-rest logistic baseline
+- a graph-only GNN
+- a graph-fingerprint fusion GNN
+- improved graph readout and cross-drug interaction refinement
+- exploratory variants including target-based features, asymmetric loss (ASL), and alternative decoding strategies
+
+The main reported experiments use **multi-label datasets** derived from a TwoSIDES-style drug-pair CSV with SMILES strings.
+
+## Repository Structure
 
 ```text
 .
-├── configs/default.yaml          # Main configuration file
+├── configs/
+│   └── default.yaml                 # Main configuration file
 ├── data/
-│   ├── raw/                      # Source CSV files
-│   └── processed/                # Generated datasets, caches, metrics, checkpoints
+│   ├── raw/                         # Input CSV files
+│   └── processed/                   # Generated datasets, caches, checkpoints, metrics
 ├── src/
-│   ├── data/                     # Dataset builders and inspection scripts
-│   ├── eval/                     # Thresholding and decoding evaluation utilities
-│   ├── features/                 # SMILES and target feature preparation
-│   ├── models/                   # Baseline and GNN model definitions
-│   ├── train/                    # Training entry points
-│   └── utils/                    # Config, IO, and seed helpers
-├── cid_to_name.py                # PubChem CID name lookup utility
-└── requirements.txt
+│   ├── data/                        # Dataset builders and inspection scripts
+│   ├── eval/                        # Thresholding / decoding evaluation utilities
+│   ├── features/                    # SMILES and target feature preparation
+│   ├── models/                      # Baseline and GNN model definitions
+│   ├── train/                       # Training entry points
+│   └── utils/                       # Config, IO, and seed helpers
+├── cid_to_name.py                   # PubChem CID name lookup utility
+├── requirements.txt
+└── README.md
 ```
 
 ## Data
@@ -57,9 +69,10 @@ Expected columns:
 
 The full `data/` folder is not stored directly in GitHub because it is too large for normal repository storage. Download the compressed data archive from Google Drive:
 
-[Download data archive](https://drive.google.com/file/d/1dg7CLVzi9XxiUQ2TeM7muRdfv6xxSGMb/view?usp=sharing)
+**Data archive:**  
+https://drive.google.com/file/d/1dg7CLVzi9XxiUQ2TeM7muRdfv6xxSGMb/view?usp=sharing
 
-After downloading, unzip the archive into the project root so the folder layout matches:
+After downloading, unzip the archive into the project root so the layout is:
 
 ```text
 data/
@@ -67,9 +80,7 @@ data/
 └── processed/
 ```
 
-The included `data/raw/README.md` describes the original TwoSIDES column definitions.
-
-## Setup
+## Environment Setup
 
 Create and activate a Python environment, then install dependencies:
 
@@ -79,75 +90,146 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Configuration
+Always run commands from the repository root.
 
-Most settings live in `configs/default.yaml`.
+## Main Configuration
 
-Important options include:
+Most experiment settings are controlled through:
+
+```text
+configs/default.yaml
+```
+
+Important configuration groups include:
 
 | Section | Key | Purpose |
 | --- | --- | --- |
-| `data` | `smiles_pairs_path` | Input CSV used by the SMILES-based pipelines |
-| `data` | `output_dir` | Directory for generated datasets and results |
-| `multilabel` | `top_k_effects` | Number of most common labels to keep; `0` keeps all labels above the minimum count |
-| `multilabel` | `min_pos_per_label` | Minimum positive examples required per side-effect label |
+| `data` | `smiles_pairs_path` | Main SMILES-pair CSV input |
+| `data` | `output_dir` | Base directory for generated outputs |
+| `multilabel` | `top_k_effects` | Number of most frequent labels to keep; `0` keeps all labels above the minimum count |
+| `multilabel` | `min_pos_per_label` | Minimum positive count required per label |
+| `multilabel` | `max_pairs` | Optional cap on the constructed multi-label dataset |
 | `split` | `type` | `random` or `cold_start` |
 | `split` | `holdout_drug_frac` | Fraction of drugs reserved for cold-start testing |
-| `gnn` | `epochs`, `batch_size`, `lr` | Main training hyperparameters |
-| `gnn` | `limit_pairs` | Optional cap on training pairs for quick experiments |
-| `targets` | `csv_path` | Target-feature CSV for overlap models |
+| `baseline` | `morgan_radius`, `morgan_nbits` | Fingerprint settings for the logistic baseline |
+| `fusion` | `morgan_radius`, `morgan_nbits` | Fingerprint settings for the neural fusion branch |
+| `gnn` | `hidden_dim`, `num_layers`, `dropout` | Core GNN architecture settings |
+| `gnn` | `batch_size`, `lr`, `weight_decay`, `epochs` | Training hyperparameters |
+| `gnn` | `loss_name` | `bce` or `asl` |
+| `gnn` | `asl_gamma_pos`, `asl_gamma_neg`, `asl_clip` | ASL loss settings |
+| `targets` | `csv_path` | Target-feature CSV for overlap / target-based variants |
 
-The default GNN config is intentionally small (`epochs: 1`, `limit_pairs: 256`) so a smoke test can run quickly. Increase these values for real training runs.
+## Recommended Reproduction Path
 
-## Multi-Label Workflow
+This is the main path for reproducing the dissertation-style multi-label workflow.
 
-Generate the SMILES cache:
+### 1. Build the SMILES cache
 
 ```bash
 python -m src.features.smiles_map
 ```
 
-Build the multi-label train/validation/test splits:
+### 2. Build the multi-label dataset
 
 ```bash
 python -m src.data.make_multilabel_dataset
 ```
 
-This creates a directory like:
+This creates a processed directory such as:
 
 ```text
-data/processed/multilabel_top<N>_<split_type>/
+data/processed/multilabel_top20_cold_start/
+data/processed/multilabel_top1211_random/
+data/processed/multilabel_top1211_cold_start/
 ```
 
-Run the sparse Morgan fingerprint logistic regression baseline:
+The exact directory name depends on the configuration.
+
+### 3. Run the multi-label baseline
 
 ```bash
 python -m src.models.baseline_multilabel_lr
 ```
 
-Train the graph-plus-Morgan multi-label GNN:
+### 4. Train the main multi-label GNN
 
 ```bash
 python -m src.train.train_gnn_multilabel
 ```
 
-Train the cardinality-aware multi-label GNN:
+This is the primary training entry point used for the retained graph-only / fusion-based multi-label experiments.
+
+## Switching Between Top-20 and All-Eligible Labels
+
+The label regime is controlled in `configs/default.yaml` through the `multilabel` section:
+
+- **Focused benchmark:** set `top_k_effects` to a positive value such as `20`
+- **Large-label benchmark:** set `top_k_effects: 0` and keep an appropriate `min_pos_per_label`
+
+Example:
+
+```yaml
+multilabel:
+  top_k_effects: 20
+  min_pos_per_label: 100
+```
+
+or:
+
+```yaml
+multilabel:
+  top_k_effects: 0
+  min_pos_per_label: 100
+```
+
+## Switching Between BCE and ASL
+
+The main trainer supports both BCE and asymmetric loss through configuration:
+
+```yaml
+gnn:
+  loss_name: "bce"
+```
+
+or:
+
+```yaml
+gnn:
+  loss_name: "asl"
+  asl_gamma_pos: 1.0
+  asl_gamma_neg: 4.0
+  asl_clip: 0.05
+```
+
+This allows the same training pipeline to be reused for loss comparisons.
+
+## Additional Training Variants
+
+The repository also includes exploratory multi-label training scripts.
+
+### Cardinality-aware variant
 
 ```bash
 python -m src.train.train_gnn_multilabel_cardinality
 ```
 
-Train the GNN variant that also uses target-overlap features:
+### Target-overlap / target-feature variant
 
 ```bash
 python -m src.train.train_gnn_multilabel_overlap
 ```
 
-The overlap model requires `data/raw/drug_targets.csv`.
+This requires:
+
+```text
+data/raw/drug_targets.csv
+```
+
+These variants were exploratory and are not the main retained pipeline.
 
 ## Evaluation Utilities
 
-After training a multi-label GNN, use these scripts to evaluate alternate decoding strategies:
+After training a multi-label model, the repository includes utilities for alternate decoding and thresholding experiments:
 
 ```bash
 python -m src.eval.global_threshold_sweep
@@ -155,32 +237,32 @@ python -m src.eval.topk_decode_sweep
 python -m src.eval.cardinality_decode_eval
 ```
 
-Result JSON files are written under the corresponding `data/processed/...` run directory.
+These scripts write result JSON files under the corresponding processed run directory.
 
-Note: `global_threshold_sweep.py` and `topk_decode_sweep.py` look for checkpoints under `gnn_multilabel_fusion/best.pt`. The current `train_gnn_multilabel.py` writes loss-specific directories such as `gnn_multilabel_fusion_bce/best.pt`, so adjust the checkpoint path in those evaluation scripts or copy the checkpoint into the expected directory before running them.
+If custom checkpoint naming or loss-specific output folders are used, check the expected checkpoint path inside the evaluation script before running it.
 
-## Binary Workflow
+## Optional Binary Workflow
 
-For a single side-effect binary classification experiment, use the SMILES-pair dataset builder:
+The repository also contains older binary single-effect scripts. These are optional and were not the main retained path in the final report.
+
+Build a binary dataset for a single effect:
 
 ```bash
 python -m src.data.make_pairs_from_smiles_csv
 ```
 
-Then run either baseline logistic regression or a pairwise GNN:
+Then run either:
 
 ```bash
 python -m src.models.baseline_lr
 python -m src.train.train_gnn
 ```
 
-If `data.effect_name` is `null`, the dataset builder automatically picks the most frequent side effect. To choose a specific label, set `data.effect_name` in `configs/default.yaml`.
+If `data.effect_name` is `null`, the dataset builder selects the most frequent side effect automatically.
 
-Note: the binary dataset builders are older than the current multi-label config layout. If you use them, make sure the config contains the split values they expect, or update the scripts to read the top-level `split` section used by the multi-label pipeline.
+## Common Outputs
 
-## Outputs
-
-Common generated files include:
+Typical generated files include:
 
 | File | Description |
 | --- | --- |
@@ -189,13 +271,13 @@ Common generated files include:
 | `pairs_test.csv` | Test split |
 | `meta.json` | Dataset metadata and label list |
 | `baseline_multilabel_results.json` | Multi-label baseline metrics |
-| `gnn_metrics.json` | Binary GNN metrics |
-| `gnn_multilabel_fusion_*/best.pt` | Best multi-label GNN checkpoint |
-| `gnn_multilabel_fusion_*/results.json` | Multi-label GNN metrics |
+| `best.pt` | Best saved checkpoint for a run |
+| `results.json` | Saved run metrics |
+| `smiles_map.csv` | Cached drug-to-SMILES mapping |
 
 ## Notes
 
-- Always run scripts from the repository root.
-- The project uses RDKit for SMILES parsing. Invalid or missing SMILES strings are skipped during feature generation.
-- For cold-start splits, test pairs contain drugs selected from a held-out drug set.
-- GPU, Apple MPS, or CPU will be selected automatically by the GNN training scripts when supported.
+- Invalid or missing SMILES strings are skipped during feature generation.
+- For cold-start splits, test pairs contain drugs drawn from a held-out drug set.
+- Device selection is automatic where supported: GPU, Apple MPS, or CPU.
+- The main code path for the dissertation is the **multi-label workflow**, not the older binary scripts.
