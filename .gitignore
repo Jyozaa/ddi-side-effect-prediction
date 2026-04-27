@@ -1,0 +1,29 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+*.so
+
+.venv/
+venv/
+env/
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Data files are large/generated. Keep lightweight documentation only.
+data/raw/*
+!data/raw/README.md
+data/processed/*
+
+# Model artifacts and experiment outputs
+*.pt
+*.pth
+*.ckpt
+*.joblib
+*.pkl
+
+# Logs
+*.log
+runs/
+wandb/

@@ -1,0 +1,58 @@
+data:
+  smiles_pairs_path: "data/raw/smiles_pairs.csv"
+  output_dir: "data/processed"
+  effect_name: null
+  negative_ratio: 1
+  seed: 42
+  max_pairs: null
+
+multilabel:
+  top_k_effects: 0
+  min_pos_per_label: 100
+  max_pairs: null
+
+split:
+  type: "cold_start"
+  train: 0.7
+  val: 0.15
+  test: 0.15
+  holdout_drug_frac: 0.2
+
+smiles:
+  smiles_cache_csv: "data/processed/smiles_map.csv"
+  max_unique_drugs: 5000
+  pubchem:
+    enabled: true
+    sleep_s: 0.0
+    max_retries: 1
+
+baseline:
+  morgan_radius: 2
+  morgan_nbits: 2048
+  C: 1.0
+  max_iter: 2000
+
+fusion:
+  morgan_radius: 2
+  morgan_nbits: 2048
+
+gnn:
+  hidden_dim: 256
+  num_layers: 4
+  dropout: 0.1
+  batch_size: 128
+  lr: 1.0e-3
+  weight_decay: 1.0e-5
+  epochs: 40
+  limit_pairs: 0
+  early_stop_patience: 5
+  loss_name: "bce"
+  asl_gamma_pos: 1.0
+  asl_gamma_neg: 4.0
+  asl_clip: 0.05
+  cardinality_loss_weight: 0.1
+
+targets:
+  csv_path: "data/raw/drug_targets.csv"
+  min_target_freq: 1
+  max_targets: 1024
