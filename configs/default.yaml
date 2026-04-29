@@ -6,10 +6,11 @@ data:
   seed: 42
   max_pairs: null
 
+# For multilabel classification, we only consider the top K most common effects, and only include drug pairs that have at least min_pos_per_label positive examples for each of those effects. We also cap the total number of pairs to max_pairs.
 multilabel:
-  top_k_effects: 0
+  top_k_effects: 1211
   min_pos_per_label: 100
-  max_pairs: null
+  max_pairs: 100000
 
 split:
   type: "cold_start"

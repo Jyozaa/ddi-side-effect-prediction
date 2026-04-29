@@ -11,10 +11,8 @@ env/
 .mypy_cache/
 .ruff_cache/
 
-# Data files are large/generated. Keep lightweight documentation only.
-data/raw/*
-!data/raw/README.md
-data/processed/*
+# Data files are large/generated and should stay out of the repository.
+data/
 
 # Model artifacts and experiment outputs
 *.pt

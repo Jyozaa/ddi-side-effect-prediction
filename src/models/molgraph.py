@@ -45,8 +45,8 @@ def atom_features(atom: Chem.Atom) -> List[float]:
     chiral_oh = _one_hot(chiral, chiral_choices)
 
     # Some extra structural signals
-    implicit_valence = atom.GetValence(Chem.rdchem.ValenceType.IMPLICIT)
-    explicit_valence = atom.GetValence(Chem.rdchem.ValenceType.EXPLICIT)
+    implicit_valence = atom.GetImplicitValence()
+    explicit_valence = atom.GetExplicitValence()
     num_radical = atom.GetNumRadicalElectrons()
     mass = atom.GetMass()
 
